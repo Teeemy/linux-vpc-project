@@ -1,0 +1,23 @@
+{
+  "name": "db-sg",
+  "description": "Security group for database servers",
+  "inbound": [
+    {
+      "protocol": "tcp",
+      "port": 3306,
+      "source": "10.0.1.0/24",
+      "action": "ACCEPT",
+      "description": "Allow MySQL from web tier"
+    }
+  ],
+  "outbound": [
+    {
+      "protocol": "all",
+      "destination": "0.0.0.0/0",
+      "action": "ACCEPT",
+      "description": "Allow all outbound (for updates)"
+    }
+  ],
+  "default_inbound": "DROP",
+  "default_outbound": "ACCEPT"
+}

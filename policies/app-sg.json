@@ -1,0 +1,37 @@
+{
+  "name": "app-sg",
+  "description": "Security group for application servers",
+  "inbound": [
+    {
+      "protocol": "tcp",
+      "port": 8080,
+      "source": "10.0.1.0/24",
+      "action": "ACCEPT",
+      "description": "Allow app traffic from web tier"
+    },
+    {
+      "protocol": "icmp",
+      "source": "10.0.0.0/16",
+      "action": "ACCEPT",
+      "description": "Allow ping from within VPC"
+    }
+  ],
+  "outbound": [
+    {
+      "protocol": "tcp",
+      "port": 3306,
+      "destination": "10.0.2.0/24",
+      "action": "ACCEPT",
+      "description": "Allow MySQL to database tier"
+    },
+    {
+      "protocol": "tcp",
+      "port": 443,
+      "destination": "0.0.0.0/0",
+      "action": "ACCEPT",
+      "description": "Allow HTTPS outbound (API calls)"
+    }
+  ],
+  "default_inbound": "DROP",
+  "default_outbound": "DROP"
+}
