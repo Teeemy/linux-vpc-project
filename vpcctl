@@ -1,0 +1,223 @@
+#!/bin/bash
+# vpcctl - Virtual Private Cloud Control Tool
+# Simulates AWS VPC functionality using Linux primitives
+
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
+
+# Get script directory for sourcing libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source library files
+source "${SCRIPT_DIR}/lib/utils.sh"
+source "${SCRIPT_DIR}/lib/vpc.sh"
+source "${SCRIPT_DIR}/lib/subnet.sh"
+source "${SCRIPT_DIR}/lib/routing.sh"
+source "${SCRIPT_DIR}/lib/nat.sh"
+source "${SCRIPT_DIR}/lib/peering.sh"
+
+# Version info
+VERSION="1.0.0-stage1"
+
+# Show usage information
+usage() {
+    cat << EOF
+vpcctl - Virtual Private Cloud Control Tool v${VERSION}
+
+USAGE:
+    vpcctl <command> [options]
+
+COMMANDS:
+
+    VPC Peering:
+        peer-vpcs <vpc-a> <vpc-b>         Create peering between VPCs
+        unpeer-vpcs <vpc-a> <vpc-b>       Remove VPC peering
+        list-peerings                     List all VPC peerings
+        show-peering <vpc-a> <vpc-b>      Show peering details
+        test-peering <vpc-a> <vpc-b>      Test peering connectivity
+
+    VPC Management:
+        create-vpc <name> <cidr>          Create a new VPC
+        delete-vpc <name>                 Delete a VPC
+        list-vpcs                         List all VPCs
+        show-vpc <name>                   Show VPC details
+    
+    Subnet Management:
+        create-subnet <vpc> <name> <cidr> Create a subnet in VPC
+        delete-subnet <name>              Delete a subnet
+        list-subnets                      List all subnets
+        exec <subnet> <command>           Execute command in subnet
+    
+    Routing & Connectivity:
+        show-routes <subnet>              Show routing table for subnet
+        show-bridge <vpc>                 Show bridge forwarding table
+        test-ping <subnet> <ip> [count]   Test connectivity from subnet
+        show-interfaces <subnet>          Show interfaces in subnet
+        verify-learning <vpc>             Verify bridge MAC learning
+    
+    NAT Gateway:
+        enable-nat <subnet> <cidr>        Enable NAT for subnet (internet access)
+        disable-nat <subnet>              Disable NAT for subnet
+        list-nat                          List all NAT rules
+        test-internet <subnet> [host]     Test internet connectivity
+        verify-nat <subnet>               Verify NAT configuration
+        show-conntrack                    Show connection tracking table
+    
+    Utility:
+        version                           Show version
+        help                              Show this help
+
+EXAMPLES:
+    # Create a VPC
+    vpcctl create-vpc my-vpc 10.0.0.0/16
+    
+    # Create a subnet
+    vpcctl create-subnet my-vpc public-subnet 10.0.1.0/24
+    
+    # Enable NAT for internet access
+    vpcctl enable-nat public-subnet 10.0.1.0/24
+    
+    # Test internet connectivity
+    vpcctl test-internet public-subnet
+    
+    # Test connectivity from subnet
+    vpcctl exec public-subnet ping -c 2 8.8.8.8
+    
+    # Cleanup everything
+    vpcctl disable-nat public-subnet
+    vpcctl delete-subnet public-subnet
+    vpcctl delete-vpc my-vpc
+
+NOTES:
+    - Must run as root (use sudo)
+    - Requires: ip, iptables, bridge-utils
+    - State stored in /var/lib/vpcctl
+
+EOF
+}
+
+# Main command dispatcher
+main() {
+    # Must run as root
+    check_root
+    
+    # Check required commands exist
+    check_command ip
+    check_command iptables
+    check_command sysctl
+    
+    # Enable IP forwarding (required for all routing)
+    enable_ip_forward
+    
+    # Parse command
+    local command="${1:-}"
+    
+    case "$command" in
+        # VPC Management
+        create-vpc)
+            create_vpc "${2:-}" "${3:-}"
+            ;;
+        delete-vpc)
+            delete_vpc "${2:-}"
+            ;;
+        list-vpcs)
+            list_vpcs
+            ;;
+        show-vpc)
+            show_vpc "${2:-}"
+            ;;
+        
+        # Subnet Management
+        create-subnet)
+            create_subnet "${2:-}" "${3:-}" "${4:-}"
+            ;;
+        delete-subnet)
+            delete_subnet "${2:-}"
+            ;;
+        list-subnets)
+            list_subnets
+            ;;
+        exec)
+            shift  # Remove 'exec' command
+            exec_in_subnet "$@"
+            ;;
+        
+        # Routing & Connectivity
+        show-routes)
+            show_routes "${2:-}"
+            ;;
+        show-bridge)
+            show_bridge_fdb "${2:-}"
+            ;;
+        test-ping)
+            test_connectivity "${2:-}" "${3:-}" "${4:-3}"
+            ;;
+        show-interfaces)
+            show_interfaces "${2:-}"
+            ;;
+        verify-learning)
+            verify_bridge_learning "${2:-}"
+            ;;
+        peer-vpcs)
+            peer_vpcs "${2:-}" "${3:-}"
+            ;;
+        unpeer-vpcs)
+            unpeer_vpcs "${2:-}" "${3:-}"
+            ;;
+        list-peerings)
+            list_peerings
+            ;;
+        show-peering)
+            show_peering "${2:-}" "${3:-}"
+            ;;
+        test-peering)
+            test_peering "${2:-}" "${3:-}"
+            ;;
+        
+        # NAT Gateway
+        enable-nat)
+            local cidr="${3:-}"
+            if [[ -z "$cidr" ]]; then
+                # Try to find CIDR from metadata
+                for vpc_dir in /var/lib/vpcctl/*/; do
+                    if [[ -f "${vpc_dir}${2}.cidr" ]]; then
+                        cidr=$(cat "${vpc_dir}${2}.cidr")
+                        break
+                    fi
+                done
+            fi
+            enable_nat "${2:-}" "$cidr"
+            ;;
+        disable-nat)
+            disable_nat "${2:-}"
+            ;;
+        list-nat)
+            list_nat_rules
+            ;;
+        test-internet)
+            test_internet "${2:-}" "${3:-8.8.8.8}"
+            ;;
+        verify-nat)
+            verify_nat "${2:-}"
+            ;;
+        show-conntrack)
+            show_conntrack
+            ;;
+        
+        # Utility
+        version)
+            echo "vpcctl version ${VERSION}"
+            ;;
+        help|--help|-h|"")
+            usage
+            ;;
+        *)
+            log_error "Unknown command: $command"
+            echo ""
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function
+main "$@"
