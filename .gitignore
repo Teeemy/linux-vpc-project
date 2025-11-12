@@ -1,0 +1,28 @@
+# State files
+/var/lib/vpcctl/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Log files
+*.log
+/tmp/
+
+# Test artifacts
+test-*.log
+debug-*.txt
+
+# Compiled files (if adding Python later)
+__pycache__/
+*.pyc
+*.pyo
+
