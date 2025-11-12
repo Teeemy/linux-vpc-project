@@ -68,7 +68,7 @@ sudo yum install -y iproute iptables bridge-utils
 ### Installation
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone <https://github.com/Teeemy/linux-vpc-project.git>
 cd vpc-from-scratch
 
 # Make vpcctl executable
@@ -406,5 +406,11 @@ Built as part of DevOps Internship Stage 4 project to demonstrate deep understan
 For questions about this implementation, see [INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md)
 
 ---
+
+## Author
+   Onibon-oje Mariam T
+
+---
+
 
 **⭐ Star this repo if you found it helpful for learning cloud networking!**
