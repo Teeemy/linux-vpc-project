@@ -14,6 +14,7 @@ source "${SCRIPT_DIR}/lib/subnet.sh"
 source "${SCRIPT_DIR}/lib/routing.sh"
 source "${SCRIPT_DIR}/lib/nat.sh"
 source "${SCRIPT_DIR}/lib/peering.sh"
+source "${SCRIPT_DIR}/lib/firewall.sh"
 
 # Version info
 VERSION="1.0.0-stage1"
@@ -27,6 +28,13 @@ USAGE:
     vpcctl <command> [options]
 
 COMMANDS:
+
+    Security Groups:
+        apply-sg <subnet> <policy-file>   Apply security group to subnet
+        remove-sg <subnet>                Remove security group from subnet
+        list-sg                           List all security groups
+        show-sg <subnet>                  Show security group rules
+        test-sg <subnet> <ip> [port]      Test security group rules
 
     VPC Peering:
         peer-vpcs <vpc-a> <vpc-b>         Create peering between VPCs
@@ -172,7 +180,22 @@ main() {
         test-peering)
             test_peering "${2:-}" "${3:-}"
             ;;
-        
+        apply-sg)
+            apply_security_group "${2:-}" "${3:-}"
+            ;;
+        remove-sg)
+            remove_security_group "${2:-}"
+            ;;
+        list-sg)
+            list_security_groups
+            ;;
+        show-sg)
+            show_security_group "${2:-}"
+            ;;
+        test-sg)
+            test_security_group "${2:-}" "${3:-}" "${4:-80}"
+            ;;
+
         # NAT Gateway
         enable-nat)
             local cidr="${3:-}"
